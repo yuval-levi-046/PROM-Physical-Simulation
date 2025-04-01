@@ -2,7 +2,7 @@ import numpy as np
 from simulation.core import Road
 from config import LANE_WIDTH
  
-def create_circular_roads(n_roads, n_lanes, radius, center=(400, 300), lane_width=30, max_speed=80):
+def create_circular_roads(n_roads, n_lanes, radius, center=(400, 300), lane_width=30, max_speed=200):
     roads = []
     angle_step = 2 * np.pi / n_roads
 

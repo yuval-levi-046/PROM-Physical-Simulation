@@ -42,6 +42,13 @@ class TrafficController:
                             if hasattr(self, 'logger') and self.logger:
                                 self.logger.log_exit(car, self.system.time)
 
+    def equal_distance_car_creator(self, num_cars, speed=0, lane_index = 0):
+
+        split_length = self.system.total_length / num_cars
+        for i in range(num_cars):
+            self.system.add_car(self.index, split_length*(i), speed, lane_index)
+            self.index += 1
+
     def add_slow_car(self, time, delta_time, car_index):
         self.rules.append([time, delta_time, car_index])
 

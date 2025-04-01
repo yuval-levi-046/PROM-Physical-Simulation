@@ -1,4 +1,5 @@
 from simulation.core import Car
+import numpy as np
 import random
 
 def safe_add_car(lane, car):
@@ -28,6 +29,12 @@ def timed_spawner(interval, road_index, num_cars):
 
 
     return rule
+
+
+
+
+
+
 
 # def load_based_spawner(road_index, lane_index, max_cars=5, cooldown=2.0):
 #     timer = [0]

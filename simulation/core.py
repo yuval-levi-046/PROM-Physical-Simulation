@@ -57,8 +57,7 @@ class Car:
                 spacing = self.safety_threshold + 1
             
             if spacing <= 0:
-                pass
-                # raise("Car has crashed")
+                raise("Car has crashed")
             
             elif spacing < self.safety_threshold:
                 self.decelerate(dt)
@@ -159,10 +158,21 @@ class System:
         self.roads = []
         self.dt = dt
         self.final_time = final_time
+        self.total_length = 0
         self.time = 0
+
+    def add_car(self, index, offset, speed, lane_index):
+        for road in self.roads:
+            if offset > road.length:
+                offset -= road.length
+            else:
+                car = Car(index, road.lanes[lane_index], offset=offset, speed=speed)
+                road.lanes[lane_index].add_car(car)
+                return
 
     def add_road(self, road):
         self.roads.append(road)
+        self.total_length += road.length
 
     def update(self, logger = None):
         for road in self.roads:

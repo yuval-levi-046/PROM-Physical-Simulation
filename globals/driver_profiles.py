@@ -4,7 +4,7 @@
 BASIC_DRIVER = {
     "name": "basic",
     "acceleration": 30,   # px/s^2
-    "max_speed": 80,       # px/s
+    "max_speed": 300,       # px/s
    "threshold": 5,        # safe distance in meters
     "reaction_time": 0
 }
