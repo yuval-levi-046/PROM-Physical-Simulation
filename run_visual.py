@@ -4,23 +4,27 @@ from simulation.controller import TrafficController
 from simulation.data_logger import DataLogger
 from simulation.spawners import timed_spawner
 from visuals.simulation import run_visual_simulation
-from simulation.core import Road
+from simulation.core import Road, Car
 
 dt = 0.01
-sim_time = 30
+sim_time = 100
 
 system = System(dt=dt, final_time=sim_time)
 
 start_pos = (100, 300)
 end_pos = (700, 300)
-road = Road(num_lanes=1, max_speed=80, start_pos=start_pos, end_pos=end_pos, lane_width=30)
+roads = create_circular_roads(10, 1, 200, max_speed=50)
 
-system.add_road(road)
+for road in roads:
+    system.add_road(road)
 
 logger = DataLogger(tag="basic_one_road_test")
 controller = TrafficController(system, logger=logger)
 
-controller.add_spawn_rule(timed_spawner(interval=1.5, road_index=0))
+controller.add_spawn_rule(timed_spawner(interval=1.5, road_index=0, num_cars = 10))
+controller.add_slow_car(10,5,0)
+
+
 
 # === Run the visual simulation ===
 run_visual_simulation(system, controller, logger)

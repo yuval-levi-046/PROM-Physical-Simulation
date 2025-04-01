@@ -7,17 +7,24 @@ class TrafficController:
         self.system = system
         self.logger = logger
         self.spawn_rules = []
+        self.rules = []
+        self.index = 0
 
     def control(self, dt):
         """Runs all registered spawn rules and handles car transfer between roads."""
-        # Handle spawning logic
         for rule in self.spawn_rules:
-            rule(dt, self.system)
-
-        # Handle car transfers at the end of lanes
+            if rule(dt, self.system, self.index):
+                self.index += 1
+        
         for road in self.system.roads:
-            for lane in road.lanes:
-                for car in lane.cars[:]:  # safe iteration
+            for lane in road.lanes:                        
+                for car in lane.cars[:]:  # safe iteration'
+                    for rule in self.rules:
+                        if abs(self.system.time - rule[0]) <= 1e-1: # INTERFERENCE
+                            car_index = rule[2]
+                            if car.id == car_index:
+                                car.apply_slowness(rule[1])
+
                     if car.offset >= lane.length:
                         # Remove from current lane
                         lane.cars.remove(car)
@@ -34,6 +41,9 @@ class TrafficController:
                         else:
                             if hasattr(self, 'logger') and self.logger:
                                 self.logger.log_exit(car, self.system.time)
+
+    def add_slow_car(self, time, delta_time, car_index):
+        self.rules.append([time, delta_time, car_index])
 
 
     def add_spawn_rule(self, rule_func):
