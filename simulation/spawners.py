@@ -10,7 +10,8 @@ def safe_add_car(lane, car):
     print(f"adding car with index: " + str(car.id))
     return True
 
-def timed_spawner(interval, road_index, num_cars):
+def timed_spawner(interval, road_index, num_cars, lane_index=None):
+
     timer = [0]
     def rule(dt, system, index):
 
@@ -21,8 +22,8 @@ def timed_spawner(interval, road_index, num_cars):
         if timer[0] >= interval:
             timer[0] = 0
             road = system.roads[road_index]
-            lane_index = random.randint(0, road.num_lanes - 1)
-            lane = road.lanes[lane_index]
+            chosen_lane_index = lane_index if lane_index is not None else random.randint(0, road.num_lanes - 1)
+            lane = road.lanes[chosen_lane_index]
             car = Car(index, lane)
 
             return safe_add_car(lane, car)

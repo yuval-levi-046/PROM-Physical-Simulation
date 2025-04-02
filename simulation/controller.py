@@ -19,20 +19,31 @@ class TrafficController:
         for road in self.system.roads:
             for lane in road.lanes:                        
                 for car in lane.cars[:]:  # safe iteration'
-                    for rule in self.rules:
-                        if abs(self.system.time - rule[0]) <= 1e-1: # INTERFERENCE
-                            car_index = rule[2]
-                            if car.id == car_index:
-                                car.apply_slowness(rule[1])
+                    # for rule in self.rules:
+                    #     if abs(self.system.time - rule[0]) <= 1e-1: # INTERFERENCE
+                    #         car_index = rule[2]
+                    #         if car.id == car_index:
+                    #             car.apply_slowness(rule[1])
+                    
+                    if car.is_obstacle:
+                        continue
 
-                    if car.offset >= lane.length:
-                        # Remove from current lane
+                    probability_right = car.should_switch_right(road.get_neighbours(car)[0]) # neighbours[0] == right, neightbours[1] == left
+                    probability_left = car.should_switch_left(road.get_neighbours(car)[1])
+
+                    if random.uniform(0.0, 1.0) < probability_right:
+                        target_lane = road.lanes[lane.id + 1]
+                        road.switch_lane(car, target_lane)
+
+                    elif random.uniform(0.0, 1.0) < probability_left:
+                        target_lane = road.lanes[lane.id - 1]
+                        road.switch_lane(car, target_lane)
+
+                    if car.offset >= lane.length: # can switch to next road
                         lane.cars.remove(car)
 
-                        # Reset position and reassign
                         car.offset = 0
 
-                        # Follow the linked lane if available
                         target_lane = lane.next_lane or (lane.road.next_road.lanes[0] if lane.road.next_road else None)
 
                         if target_lane:
