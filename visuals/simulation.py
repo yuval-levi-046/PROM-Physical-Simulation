@@ -24,9 +24,10 @@ def run_visual_simulation(system, controller=None, logger=None):
                 running = False
 
         # Logic update
+        system.update(logger=logger)
+        
         if controller:
             controller.control(system.dt)
-        system.update(logger=logger)
 
         # Drawing
         screen.fill(BACKGROUND_COLOR)

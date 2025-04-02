@@ -2,6 +2,7 @@
 import numpy as np
 from globals.driver_profiles import BASIC_DRIVER, DRIVER_PROFILES
 from config import CAR_COLOR, CAR_WIDTH, CAR_LENGTH, LANE_WIDTH
+import random
 
 class Car:
     def __init__(self, id, lane, offset = 0, speed = 0, next_car = None, driver_profile = "basic"): # MAKE CLASS OBSTACLE
@@ -11,6 +12,8 @@ class Car:
             "slowness_timer": 0
         }
         self.id = id
+
+        self.probability = 0.05
 
         self.lane = lane
         self.offset = offset  # position along the lane
@@ -22,18 +25,46 @@ class Car:
 
         self.max_speed = driver_type["max_speed"]
         self.threshold = driver_type["threshold"] # minimum position to maintain from the car infront
-        self.acc = driver_type["acceleration"]     
+        self.acc = driver_type["acceleration"] 
+        self.safety_threshold = 0   
            
         self.length = CAR_LENGTH
         self.stopped = False  # for collision handling
 
-    def update(self, dt):
+    def should_switch_right(self, neighbours): #Neighbour[0] is the one before you
+        if neighbours == []: return 0
 
+        threshold = self.safety_threshold + self.length
+        
+        difference_1 = abs(neighbours[0].offset - self.offset) if neighbours[0] else threshold
+
+        difference_2 = abs(neighbours[1].offset - self.offset) if neighbours[1] else threshold
+
+        if difference_1 >= threshold and difference_2 >= threshold:
+            return self.probability
+        
+        return 0
+
+    def should_switch_left(self, neighbours):
+        if not neighbours: return 0
+
+        threshold = self.safety_threshold + self.length
+        
+        difference_1 = abs(neighbours[0].offset - self.offset) if neighbours[0] else threshold
+
+        difference_2 = abs(neighbours[1].offset - self.offset) if neighbours[1] else threshold
+
+        if difference_1 >= threshold and difference_2 >= threshold:
+            return self.probability
+        
+        return 0
+
+    def update(self, dt):
         self.safety_threshold = self.velocity_magnitude ** 2 / (2 * self.acc) + self.threshold
 
         if self.is_obstacle:
             return
-        
+                
         if self.is_slowed:
             if self.timers["slowness_timer"] > 0:
                 self.decelerate(dt)
@@ -67,7 +98,6 @@ class Car:
                 return
             
         self.accelerate(dt)
-            
 
     def move(self, dt):
         self.offset += self.velocity_magnitude * dt
@@ -91,7 +121,8 @@ class Car:
         
 
 class Lane:
-    def __init__(self, start_pos, end_pos, max_speed):
+    def __init__(self, id, start_pos, end_pos, max_speed):
+        self.id = id
         self.start_pos = np.array(start_pos, dtype=float)
         self.end_pos = np.array(end_pos, dtype=float)
         self.cars = []
@@ -102,8 +133,13 @@ class Lane:
 
     def add_car(self, car):
         self.cars.append(car)
+        self.update_next_cars()
 
-    def update(self, dt):
+    def remove_car(self, car):
+        self.cars.remove(car)
+        self.update_next_cars()
+
+    def update_next_cars(self):
         self.cars.sort(key=lambda c: c.offset) # ADD FOR LATER
 
         for i in range(len(self.cars) - 1):
@@ -111,14 +147,30 @@ class Lane:
 
         if self.cars:
             if self.next_lane and self.next_lane.cars:
-                self.cars[-1].next_car = self.next_lane.cars[0]  # front-most car
+                self.cars[-1].next_car = self.next_lane.cars[0]
 
+    def update(self, dt):
         # Update all cars
         for car in self.cars:
             car.update(dt)
 
     def update_next_lane(self, next_lane):
         self.next_lane = next_lane
+
+    def find_car_by_offset(self, offset):
+        before = None
+        after = None
+
+        for car in self.cars:
+            if car.offset <= offset:
+                before = car
+            elif car.offset > offset:
+                after = car
+                break
+
+        return before, after
+
+
 
 
 class Road:
@@ -137,7 +189,7 @@ class Road:
             offset_vector = normal * offset
             lane_start = self.start_pos + offset_vector
             lane_end = self.end_pos + offset_vector
-            lane = Lane(lane_start, lane_end, max_speed)
+            lane = Lane(i, lane_start, lane_end, max_speed)
 
             lane.road = self
             self.lanes.append(lane)
@@ -149,8 +201,34 @@ class Road:
     def get_all_cars(self):
         return [car for lane in self.lanes for car in lane.cars]
     
+    def get_neighbours(self, car):
+        """
+            Returns the list of neighbours to the right and then to the left 
+            returns:
+                arr_neightbours_right, arr_neightbours_left
+        """
+        lane_index = car.lane.id
+        offset = car.offset
+        if self.num_lanes == 1: return [], []
+        if lane_index == 0 :
+            return self.lanes[1].find_car_by_offset(offset), []
+        
+        if lane_index == self.num_lanes - 1:
+            return [], self.lanes[lane_index - 1].find_car_by_offset(offset)
+        
+        return self.lanes[lane_index + 1].find_car_by_offset(offset), self.lanes[lane_index - 1].find_car_by_offset(offset)
+        
+
+    
     def update_next_lane(self, lane_idx, next_lane):
         self.lanes[lane_idx].update_next_lane(next_lane)
+
+    def switch_lane(self, car, new_lane):
+        car.lane.remove_car(car)
+        car.lane = new_lane
+        new_lane.add_car(car)
+
+
 
 
 class System:
@@ -161,7 +239,7 @@ class System:
         self.total_length = 0
         self.time = 0
 
-    def add_car(self, index, offset, speed, lane_index):
+    def add_car(self, index, offset, speed, lane_index):        
         for road in self.roads:
             if offset > road.length:
                 offset -= road.length
