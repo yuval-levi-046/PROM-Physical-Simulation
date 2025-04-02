@@ -4,8 +4,112 @@ from globals.driver_profiles import BASIC_DRIVER, DRIVER_PROFILES
 from config import CAR_COLOR, CAR_WIDTH, CAR_LENGTH, LANE_WIDTH
 import random
 
+class DriverModel:
+     
+    def __init__(self, profile):
+        driver_type = DRIVER_PROFILES[profile]
+
+        self.profile_name = profile
+        self.max_speed = driver_type["max_speed"]
+        self.threshold = driver_type["threshold"]
+        self.idm_params = driver_type.get("idm_params", {})  # Optional override
+        self.velocity_threshold = 5
+        self.p = driver_type.get("politeness", 0.3)
+        self.a_threshold = driver_type.get("lane_change_threshold", 0.2)
+        self.bias_left = driver_type.get("bias_left", 0.2)
+        self.bias_right = driver_type.get("bias_right", -0.2)
+        self.safety_constraint = -4.0  # CHECK THIS SAFETY_CONSTRAINT
+    
+
+    def compute_idm_acceleration(self, car, leader=None):
+        a = self.idm_params.get("a", 1.5)
+        b = self.idm_params.get("b", 2.0)
+        delta = self.idm_params.get("delta", 4)
+        s0 = self.idm_params.get("s0", 2.0)
+        T = self.idm_params.get("T", 1.5)
+
+        v = car.velocity_magnitude
+        v0 = car.desired_velocity
+
+        if leader is None:
+            leader = car.next_car
+
+        if leader is None:
+            s = float('inf')
+            delta_v = 0
+        else:
+            s = leader.offset - car.offset - leader.length
+            delta_v = v - leader.velocity_magnitude
+
+        s_star = s0 + v * T + (v * delta_v) / (2 * (a * b)**0.5)
+        acc = a * (1 - (v / v0)**delta - (s_star / s)**2)
+
+        return acc
+    
+    def evaluate_lane_change(self, car, direction, road):
+
+        if car.velocity_magnitude < self.velocity_threshold:
+            return False
+
+        current_lane = car.lane
+        lane_index = current_lane.id
+
+        if direction == "left" and lane_index == 0:
+            return False
+        if direction == "right" and lane_index == road.num_lanes - 1:
+            return False
+        
+        target_lane_index = lane_index + 1 if direction == "right" else lane_index - 1
+        target_lane = road.lanes[target_lane_index]
+
+        follower, leader = target_lane.find_car_by_offset(car.offset)
+        old_follower = current_lane.get_follower(car)
+
+        a_current = self.compute_idm_acceleration(car)
+        a_new = self.compute_idm_acceleration(car, leader)
+
+        impact_new_follower = 0
+        impact_old_follower = 0
+
+        if follower:
+            a_before = self.compute_idm_acceleration(follower, leader)
+            a_after = self.compute_idm_acceleration(follower, car)
+            impact_new_follower = a_after - a_before
+
+        if old_follower:
+            a_before = self.compute_idm_acceleration(old_follower, car)
+            a_after = self.compute_idm_acceleration(old_follower, car.next_car)
+            impact_old_follower = a_after - a_before
+
+        bias = self.bias_left if direction == "left" else self.bias_right
+
+        incentive = (a_new - a_current) - self.p * (impact_new_follower + impact_old_follower) + bias
+
+        min_safe_gap = 1.0  # meters from bumper to bumper
+
+        if follower:
+            a_follower_after = self.compute_idm_acceleration(follower, car)
+
+            # Car bodies go out half-length from center, so check front of follower to back of car
+            follower_front = follower.offset + follower.length / 2
+            car_back = car.offset - car.length / 2
+            gap_to_switching_car = car_back - follower_front
+
+            if a_follower_after < self.safety_constraint or gap_to_switching_car < min_safe_gap:
+                return False
+
+        if leader:
+            car_front = car.offset + car.length / 2
+            leader_back = leader.offset - leader.length / 2
+            gap_to_leader = leader_back - car_front
+
+            if gap_to_leader < min_safe_gap:
+                return False
+
+        return incentive > self.a_threshold
+
 class Car:
-    def __init__(self, id, lane, offset = 0, speed = 0, next_car = None, driver_profile = "basic"): # MAKE CLASS OBSTACLE
+    def __init__(self, id, offset = 0, speed = 0, next_car = None, driver_profile = "basic"): # MAKE CLASS OBSTACLE
         self.is_obstacle = False
         self.is_slowed = False
         self.timers = {
@@ -15,53 +119,27 @@ class Car:
 
         self.probability = 0.05
 
-        self.lane = lane
+        self.lane = None
         self.offset = offset  # position along the lane
         self.velocity_magnitude = speed  # scalar speed
         self.next_car = next_car  # car in front
 
-        self.driver_profile = driver_profile
-        driver_type = DRIVER_PROFILES[driver_profile]
+        self.max_speed = 0
 
-        self.max_speed = driver_type["max_speed"]
-        self.threshold = driver_type["threshold"] # minimum position to maintain from the car infront
-        self.acc = driver_type["acceleration"] 
-        self.safety_threshold = 0   
+        self.driver_profile = driver_profile
+
+        self.driver_model = DriverModel(driver_profile) 
            
         self.length = CAR_LENGTH
         self.stopped = False  # for collision handling
 
-    def should_switch_right(self, neighbours): #Neighbour[0] is the one before you
-        if neighbours == []: return 0
+        self.lane_change_timer = 3.0  # VARIABLE TO CHANGE
+        self.time_since_last_lane_change = 0
 
-        threshold = self.safety_threshold + self.length
-        
-        difference_1 = abs(neighbours[0].offset - self.offset) if neighbours[0] else threshold
-
-        difference_2 = abs(neighbours[1].offset - self.offset) if neighbours[1] else threshold
-
-        if difference_1 >= threshold and difference_2 >= threshold:
-            return self.probability
-        
-        return 0
-
-    def should_switch_left(self, neighbours):
-        if not neighbours: return 0
-
-        threshold = self.safety_threshold + self.length
-        
-        difference_1 = abs(neighbours[0].offset - self.offset) if neighbours[0] else threshold
-
-        difference_2 = abs(neighbours[1].offset - self.offset) if neighbours[1] else threshold
-
-        if difference_1 >= threshold and difference_2 >= threshold:
-            return self.probability
-        
-        return 0
+    def evaluate_lane_change(self, direction, road):
+        return self.driver_model.evaluate_lane_change(self, direction, road)
 
     def update(self, dt):
-        self.safety_threshold = self.velocity_magnitude ** 2 / (2 * self.acc) + self.threshold
-
         if self.is_obstacle:
             return
                 
@@ -73,47 +151,15 @@ class Car:
                 self.is_slowed = False
             return
         
-        if self.velocity_magnitude > self.max_speed:
-            self.decelerate(dt)
-            return
-
-        if self.next_car: 
-            if self.lane == self.next_car.lane:
-                spacing = self.next_car.offset - self.offset - self.length 
-            
-            elif self.lane.next_lane == self.next_car.lane:
-                spacing = self.lane.length - self.offset + self.next_car.offset - self.length 
-
-            else:
-                spacing = self.safety_threshold + 1
-            
-            if spacing <= 0:
-                raise("Car has crashed")
-            
-            elif spacing < self.safety_threshold:
-                self.decelerate(dt)
-                return
-            else:
-                self.accelerate(dt)
-                return
-            
-        self.accelerate(dt)
+        self.acceleration = self.driver_model.compute_idm_acceleration(self)
+        self.move(dt)
 
     def move(self, dt):
+        self.velocity_magnitude += self.acceleration * dt
         self.offset += self.velocity_magnitude * dt
-
-    def accelerate(self, dt):
-        self.velocity_magnitude += self.acc * dt
-        self.velocity_magnitude = min(self.velocity_magnitude, self.lane.max_speed)
-        self.move(dt)
-
-    def decelerate(self, dt):
-        self.velocity_magnitude -= self.acc * dt
-        self.velocity_magnitude = max(self.velocity_magnitude, 0)
-        self.move(dt)
-
-    def set_velocity(self, velocity):
-        self.velocity_magnitude = velocity
+    
+    def calculate_desired_velocity(self, max_speed): # IMPLEMENT THIS FURTHER
+        self.desired_velocity = max_speed
 
     def apply_slowness(self, delta_time):
         self.timers["slowness_timer"] = delta_time
@@ -133,6 +179,9 @@ class Lane:
 
     def add_car(self, car):
         self.cars.append(car)
+        car.max_speed = self.max_speed
+        car.lane = self
+        car.calculate_desired_velocity(self.max_speed)
         self.update_next_cars()
 
     def remove_car(self, car):
@@ -156,6 +205,12 @@ class Lane:
 
     def update_next_lane(self, next_lane):
         self.next_lane = next_lane
+
+    def get_follower(self, car):
+        index = self.cars.index(car)
+        if index > 0:
+            return self.cars[index-1]
+
 
     def find_car_by_offset(self, offset):
         before = None
@@ -225,10 +280,8 @@ class Road:
 
     def switch_lane(self, car, new_lane):
         car.lane.remove_car(car)
-        car.lane = new_lane
+        car.time_since_last_lane_change = 0
         new_lane.add_car(car)
-
-
 
 
 class System:

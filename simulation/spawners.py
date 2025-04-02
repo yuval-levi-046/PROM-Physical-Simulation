@@ -4,7 +4,7 @@ import random
 
 def safe_add_car(lane, car):
     if lane.cars:
-        if abs(lane.cars[0].offset) < car.threshold + car.length:
+        if abs(lane.cars[0].offset) < car.driver_model.threshold + car.length:
             return False  
     lane.add_car(car)
     print(f"adding car with index: " + str(car.id))
@@ -24,7 +24,7 @@ def timed_spawner(interval, road_index, num_cars, lane_index=None):
             road = system.roads[road_index]
             chosen_lane_index = lane_index if lane_index is not None else random.randint(0, road.num_lanes - 1)
             lane = road.lanes[chosen_lane_index]
-            car = Car(index, lane)
+            car = Car(index)
 
             return safe_add_car(lane, car)
 

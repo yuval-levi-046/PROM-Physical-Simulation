@@ -27,18 +27,15 @@ class TrafficController:
                     
                     if car.is_obstacle:
                         continue
+                    
+                    car.time_since_last_lane_change += dt
+                    if car.time_since_last_lane_change > car.lane_change_timer:
+                        if car.evaluate_lane_change("right", road):
+                            road.switch_lane(car, road.lanes[lane.id + 1])
 
-                    probability_right = car.should_switch_right(road.get_neighbours(car)[0]) # neighbours[0] == right, neightbours[1] == left
-                    probability_left = car.should_switch_left(road.get_neighbours(car)[1])
-
-                    if random.uniform(0.0, 1.0) < probability_right:
-                        target_lane = road.lanes[lane.id + 1]
-                        road.switch_lane(car, target_lane)
-
-                    elif random.uniform(0.0, 1.0) < probability_left:
-                        target_lane = road.lanes[lane.id - 1]
-                        road.switch_lane(car, target_lane)
-
+                        elif car.evaluate_lane_change("left", road):
+                            road.switch_lane(car, road.lanes[lane.id - 1])
+                    
                     if car.offset >= lane.length: # can switch to next road
                         lane.cars.remove(car)
 
