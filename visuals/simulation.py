@@ -1,6 +1,7 @@
 # visuals/simulation.py
 import pygame
-from visuals.sprites import draw_road, draw_car
+from visuals.sprites import draw_road, draw_car, draw_obstacle
+from simulation.core import Obstacle, Car
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, FPS
 
 def run_visual_simulation(system, controller=None, logger=None):
@@ -25,7 +26,7 @@ def run_visual_simulation(system, controller=None, logger=None):
 
         # Logic update
         system.update(logger=logger)
-        
+
         if controller:
             controller.control(system.dt)
 
@@ -35,7 +36,10 @@ def run_visual_simulation(system, controller=None, logger=None):
             draw_road(screen, road)
             for lane in road.lanes:
                 for car in lane.cars:
-                    draw_car(screen, car, lane)
+                    if type(car) == Obstacle:
+                        draw_obstacle(screen, car, lane)
+                    else:
+                        draw_car(screen, car, lane)
 
         pygame.display.flip()
         clock.tick(FPS)

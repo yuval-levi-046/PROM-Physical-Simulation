@@ -2,7 +2,7 @@
 import pygame
 import math
 import numpy as np
-from config import CAR_WIDTH, CAR_LENGTH, ROAD_COLOR, CAR_COLOR, LANE_WIDTH
+from config import CAR_WIDTH, CAR_LENGTH, ROAD_COLOR, CAR_COLOR, LANE_WIDTH, OBSTACLE_COLOR
 
 # Cache surfaces globally (you could optimize further if needed)
 CAR_SURFACE = pygame.Surface((CAR_LENGTH, CAR_WIDTH), pygame.SRCALPHA)
@@ -14,6 +14,16 @@ def draw_car(screen, car, lane):
     rotated = pygame.transform.rotate(CAR_SURFACE, -math.degrees(angle))
     rect = rotated.get_rect(center=pos)
     screen.blit(rotated, rect)
+
+def draw_obstacle(screen, obstacle, lane):
+    obstacle_surface = pygame.Surface((obstacle.length, CAR_WIDTH), pygame.SRCALPHA)
+    obstacle_surface.fill(OBSTACLE_COLOR)
+    angle = math.atan2(lane.unit_direction[1], lane.unit_direction[0])
+    pos = lane.start_pos + lane.unit_direction * obstacle.offset
+    rotated = pygame.transform.rotate(obstacle_surface, -math.degrees(angle))
+    rect = rotated.get_rect(center=pos)
+    screen.blit(rotated, rect)
+
 
 
 def draw_road(screen, road):
