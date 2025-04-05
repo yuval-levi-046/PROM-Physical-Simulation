@@ -24,11 +24,7 @@ controller = TrafficController(system, logger=logger)
 
 road.set_next_road(road)
 
-controller.add_spawn_rule(timed_spawner(1, 0, 5, 0, "random"))
-controller.add_spawn_rule(timed_spawner(1, 0, 5, 1, "random"))
-controller.add_spawn_rule(timed_spawner(1, 0, 5, 2, "random"))
-controller.add_spawn_rule(timed_spawner(1, 0, 5, 3, "random"))
-controller.add_spawn_rule(timed_spawner(1, 0, 5, 4, "random"))
+system.gaussian_spread_car_creator(40, "random", 0, 0)
 
 
 

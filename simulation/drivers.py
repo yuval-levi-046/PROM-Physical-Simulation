@@ -78,7 +78,7 @@ class DriverModel:
 
         if direction == "left" and leader:
             if leader.velocity_magnitude < car.velocity_magnitude:
-                pass
+                car.deccelerate(road.dt)
 
         a_current = self.compute_idm_acceleration(car)
         a_new = self.compute_idm_acceleration(car, leader)

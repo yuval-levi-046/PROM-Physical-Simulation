@@ -69,7 +69,7 @@ class Car:
             return
         
         if self.counter % 100 == 0:
-            self.max_speed += np.random.uniform(-5, 5)
+            self.max_speed = self.lane.max_speed + np.random.uniform(-5, 5)
                 
         if self.is_slowed:
             if self.timers["slowness_timer"] > 0:
