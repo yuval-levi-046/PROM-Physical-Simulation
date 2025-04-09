@@ -39,7 +39,7 @@ AGGRESSIVE_DRIVER = {
         "T": 1.0
     },
     "politeness": 0.1,
-    "lane_change_threshold": 0.4,
+    "lane_change_threshold": 0.3,
     "bias_left": -0.3,
     "bias_right": 0.3
 }

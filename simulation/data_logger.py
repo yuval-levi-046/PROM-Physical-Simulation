@@ -30,7 +30,8 @@ class DataLogger:
                         "offset": car.offset,
                         "velocity": car.velocity_magnitude,
                         "acceleration": car.acceleration,
-                        "driver_type": car.driver_profile
+                        "driver_type": car.driver_profile,
+                        "desired_speed": getattr(car.driver_model, "desired_speed", None)
                     }
                     self.records.append(record)
 

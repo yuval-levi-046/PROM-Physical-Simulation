@@ -5,12 +5,21 @@ import numpy as np
 from config import CAR_WIDTH, CAR_LENGTH, ROAD_COLOR, CAR_COLOR, LANE_WIDTH, OBSTACLE_COLOR
 
 # Cache surfaces globally (you could optimize further if needed)
-CAR_SURFACE = pygame.Surface((CAR_LENGTH, CAR_WIDTH), pygame.SRCALPHA)
-CAR_SURFACE.fill(CAR_COLOR)
+
 
 def draw_car(screen, car, lane):
+    # Calculate direction and position
     angle = math.atan2(lane.unit_direction[1], lane.unit_direction[0])
     pos = lane.start_pos + lane.unit_direction * car.offset
+
+    # Normalize speed to grayscale
+    speed = car.driver_model.desired_speed + car.max_speed
+    intensity = 255 - int(255 * (speed-(lane.max_speed - 30)) / 60)
+    color = (255, intensity, intensity)
+
+    # Draw car
+    CAR_SURFACE = pygame.Surface((CAR_LENGTH, CAR_WIDTH), pygame.SRCALPHA)
+    CAR_SURFACE.fill(color)
     rotated = pygame.transform.rotate(CAR_SURFACE, -math.degrees(angle))
     rect = rotated.get_rect(center=pos)
     screen.blit(rotated, rect)

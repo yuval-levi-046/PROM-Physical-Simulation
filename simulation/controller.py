@@ -49,13 +49,11 @@ class TrafficController:
                             lane.remove_car(car)
                         except:
                             print("Warning removed car that doesn't exist!", car.id)
-
+                        
                         car.offset = 0
 
-                        target_lane = lane.next_lane or (lane.road.next_road.lanes[lane.id] if lane.road.next_road else None)
-
-                        if target_lane:
-                            target_lane.add_car(car)
+                        if car.lane.next_lane:
+                            lane.next_lane.add_car(car)
                         else:
                             if hasattr(self, 'logger') and self.logger:
                                 self.logger.log_exit(car, self.system.time)

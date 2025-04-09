@@ -26,12 +26,12 @@ class DriverModel:
         self.T = self.idm_params.get("T", 1.5)
 
         self.safety_constraint = -self.b * 0.9
-    
+        self.speed_factor = 1.5
 
     def compute_idm_acceleration(self, car, leader=0):
         
         v = car.velocity_magnitude
-        v0 = car.max_speed + self.desired_speed
+        v0 = car.max_speed*self.speed_factor + self.desired_speed
 
         if leader == 0:
             leader = car.next_car
@@ -41,8 +41,9 @@ class DriverModel:
             delta_v = 0
 
         else:
+            distance = car.distance_to_car_ahead(leader)
 
-            s = max(car.distance_to_car_ahead(leader) - leader.length, 0.1)
+            s = max(distance - leader.length, 1)
 
             delta_v = v - leader.velocity_magnitude
 
@@ -70,6 +71,8 @@ class DriverModel:
         if direction == "right" and lane_index == road.num_lanes - 1:
             return False
         
+        bias = self.bias_left if direction == "left" else self.bias_right
+        
         target_lane_index = lane_index + 1 if direction == "right" else lane_index - 1
         target_lane = road.lanes[target_lane_index]
 
@@ -79,6 +82,11 @@ class DriverModel:
         if direction == "left" and leader:
             if leader.velocity_magnitude < car.velocity_magnitude:
                 car.deccelerate(road.dt)
+
+        if direction == "right" and old_follower:
+            if old_follower.velocity_magnitude > self.desired_speed + car.max_speed:
+                bias += (1 - self.p) * self.bias_right * 2
+
 
         a_current = self.compute_idm_acceleration(car)
         a_new = self.compute_idm_acceleration(car, leader)
@@ -96,8 +104,6 @@ class DriverModel:
             a_after = self.compute_idm_acceleration(old_follower, car.next_car)
             impact_old_follower = a_after - a_before
 
-        bias = self.bias_left if direction == "left" else self.bias_right
-
         incentive = (a_new - a_current) - self.p * (impact_new_follower + impact_old_follower) + bias
 
         min_safe_gap = 1.0  
@@ -108,9 +114,7 @@ class DriverModel:
             gap_to_switching_car = follower.distance_to_car_ahead(car) - (follower.length / 2 + car.length / 2)
 
             if a_follower_after < self.safety_constraint or gap_to_switching_car < min_safe_gap:
-
                 return False
-
 
         if leader:
             gap_to_leader = car.distance_to_car_ahead(leader) - (car.length / 2 + leader.length / 2)
@@ -120,7 +124,7 @@ class DriverModel:
                 return False
             
         return incentive > self.a_threshold
-    
+        
 
 class RandomDriverModel(DriverModel):
 

@@ -7,26 +7,26 @@ from visuals.simulation import run_visual_simulation
 from simulation.core import Road, Car, Obstacle
 
 dt = 0.1
-sim_time = 300
-
+sim_time = 200
 system = System(dt=dt, final_time=sim_time)
 
+# === Create Main Road ===
 start_pos = (0, 300)
 end_pos = (800, 300)
-road = Road(5, 60, start_pos, end_pos)
+main_road = Road(num_lanes=4, max_speed=60, start_pos=start_pos, end_pos=end_pos)
 
-system.add_road(road)
-logger = DataLogger(expected_total_cars=10000, tag="basic_one_road_test")
+# === Add Roads to System ===
+system.add_road(main_road)
+
+main_road.set_next_road(main_road)
+
+# === Add Logger + Controller ===
+logger = DataLogger(expected_total_cars=100, tag="merge_test")
 controller = TrafficController(system, logger=logger)
 
-# obstacle = Obstacle(-1, 500, 30)
-# road.lanes[0].add_car(obstacle)
+# # Spawn cars on the merge road that try to enter lane 0
 
-road.set_next_road(road)
+system.gaussian_spread_car_creator(30, speed=0, lane_index=3, road_index=0)
 
-system.gaussian_spread_car_creator(40, "random", 0, 0)
-
-
-
-# === Run the visual simulation ===
+# === Run the simulation ===
 run_visual_simulation(system, controller, logger)

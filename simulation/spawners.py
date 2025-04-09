@@ -42,7 +42,7 @@ def timed_spawner(interval, road_index, num_cars, lane_index=None, driver_type="
             if safe_add_car(lane, car, system.time):
                 local_num_cars[0] += 1
                 timer[0] = 0
-                system.index += 1
+                system.increment_index()
                 return True
 
         return False
