@@ -16,6 +16,8 @@ class DriverModel:
         self.bias_left = driver_type.get("bias_left", 0.2)
         self.bias_right = driver_type.get("bias_right", -0.2)
 
+        self.braking_chance = driver_type.get("braking_chance", 1e-7)
+
         self.speed_difference = driver_type.get("speed_difference", 0)
         self.desired_speed = np.clip(np.random.normal(self.speed_difference, 5), self.speed_difference-10, self.speed_difference+10)
 

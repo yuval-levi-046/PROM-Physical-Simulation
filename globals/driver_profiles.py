@@ -11,9 +11,9 @@ BASIC_DRIVER = {
     "politeness": 0.3,
     "lane_change_threshold": 0.2,
     "bias_left": -0.3,
-    "bias_right": 0.3
+    "bias_right": 0.3,
+    "braking_chance": 1e-3
 }
-
 CAUTIOUS_DRIVER = {
     "desired_speed": -10,
     "idm_params": {
@@ -26,8 +26,10 @@ CAUTIOUS_DRIVER = {
     "politeness": 0.5,
     "lane_change_threshold": 0.1,
     "bias_left": -0.2,
-    "bias_right": 0.2
+    "bias_right": 0.2,
+    "braking_chance": 1e-3
 }
+
 
 AGGRESSIVE_DRIVER = {
     "speed_difference": 20,
@@ -41,7 +43,8 @@ AGGRESSIVE_DRIVER = {
     "politeness": 0.1,
     "lane_change_threshold": 0.3,
     "bias_left": -0.3,
-    "bias_right": 0.3
+    "bias_right": 0.3,
+    "braking_chance": 1e-3
 }
 
 

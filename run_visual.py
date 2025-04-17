@@ -26,7 +26,11 @@ controller = TrafficController(system, logger=logger)
 
 # # Spawn cars on the merge road that try to enter lane 0
 
-system.gaussian_spread_car_creator(30, speed=0, lane_index=3, road_index=0)
+system.gaussian_spread_car_creator(1, speed=0, lane_index=3, road_index=0)
+# system.gaussian_spread_car_creator(10, speed=0, lane_index=2, road_index=0)
+# system.gaussian_spread_car_creator(10, speed=0, lane_index=1, road_index=0)
+# system.gaussian_spread_car_creator(10, speed=0, lane_index=0, road_index=0)
+
 
 # === Run the simulation ===
 run_visual_simulation(system, controller, logger)

@@ -34,7 +34,7 @@ class Car:
             self.driver_model = DriverModel(driver_type)
 
         self.acc_value = self.driver_model.a
-        self.decc_value = self.driver_model.b * 0.5
+        self.decc_value = self.driver_model.b * 2
            
         self.length = length
         self.stopped = False  # for collision handling
@@ -73,20 +73,19 @@ class Car:
 
         if self.is_obstacle:
             return
-        
-        # if self.counter % 100 == 0:
-        #     self.max_speed = self.lane.max_speed + np.random.uniform(-5, 5)
-                
+
+        if self.driver_model.braking_chance > random.uniform(0, 1):
+            self.apply_slowness(20*dt)
+
+        self.acceleration = self.driver_model.compute_idm_acceleration(self)
+
         if self.is_slowed:
             if self.timers["slowness_timer"] > 0:
                 self.deccelerate(dt)
                 self.timers["slowness_timer"] = max(0, self.timers["slowness_timer"] - dt)
             else:
                 self.is_slowed = False
-            return
-        
-        self.acceleration = self.driver_model.compute_idm_acceleration(self)
-        print(self.acceleration)
+
         self.move(dt)
 
     def move(self, dt):
@@ -100,7 +99,7 @@ class Car:
         self.velocity_magnitude = max(self.velocity_magnitude + self.acc_value * dt, 0)
 
     def deccelerate(self, dt):
-        self.velocity_magnitude = max(self.velocity_magnitude - self.decc_value * dt, 0)
+        self.velocity_magnitude = max(self.velocity_magnitude - self.decc_value * self.velocity_magnitude / 100 * dt, 0)
 
     def apply_slowness(self, delta_time):
         self.timers["slowness_timer"] = delta_time
@@ -272,6 +271,10 @@ class System:
             road.update(self.dt)
         self.time += self.dt
 
+        if 0 < ((self.time) % 10) < 1e-3:
+            print(f"Current time passed: {self.time}")
+
+
         if logger:
             logger.log(self)
 
@@ -282,6 +285,7 @@ class System:
 
     def gaussian_spread_car_creator(self, num_cars, driver_type="basic", speed=0, lane_index=0, mean=None, std_dev=None, road_index = None):
 
+        road_index = 0
         road_length = self.roads[road_index].length  # assuming single road for now
         car_length = CAR_LENGTH  # adjust based on your Car class
         min_spacing = car_length + 1  # buffer to avoid overlaps
