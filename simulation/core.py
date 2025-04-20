@@ -1,6 +1,6 @@
 # simulation/core.py
 import numpy as np
-from config import CAR_COLOR, CAR_WIDTH, CAR_LENGTH, LANE_WIDTH
+from config import OBSTACLE_LENGTH, CAR_LENGTH, LANE_WIDTH
 from simulation.drivers import DriverModel, RandomDriverModel
 import random
 
@@ -17,6 +17,8 @@ class Car:
         self.counter = 0
 
         self.probability = 0.05
+
+        self.new_acceleration = 0
 
         self.lane = None
         self.offset = offset  # position along the lane
@@ -75,7 +77,7 @@ class Car:
             return
 
         if self.driver_model.braking_chance > random.uniform(0, 1):
-            self.apply_slowness(20*dt)
+            self.apply_slowness(8*dt)
 
         self.acceleration = self.driver_model.compute_idm_acceleration(self)
 
@@ -99,7 +101,7 @@ class Car:
         self.velocity_magnitude = max(self.velocity_magnitude + self.acc_value * dt, 0)
 
     def deccelerate(self, dt):
-        self.velocity_magnitude = max(self.velocity_magnitude - self.decc_value * self.velocity_magnitude / 100 * dt, 0)
+        self.velocity_magnitude = max(self.velocity_magnitude - self.decc_value * dt, 0)
 
     def apply_slowness(self, delta_time):
         self.timers["slowness_timer"] = delta_time
@@ -107,7 +109,7 @@ class Car:
 
     def has_lane(self):
         return self.lane is not None
-        
+       
         
 
 class Lane:
@@ -122,8 +124,12 @@ class Lane:
         self.next_lane = None
         self.unit_direction = (self.end_pos - self.start_pos) / self.length
 
+        self.num_obstacles = 0
+
     def add_obstacle(self, obstacle):
-        self.obstacles.append(obstacle)
+        self.cars.append(obstacle)
+        self.num_obstacles += 1
+        obstacle.lane = self
 
     def add_car(self, car):
         self.cars.append(car)
@@ -187,6 +193,10 @@ class Lane:
                 pass  # Lane index doesn't exist in next road
 
         return before, after
+    
+    def has_cars(self):
+        return len(self.cars) > self.num_obstacles
+        
 
 
 
@@ -238,6 +248,12 @@ class Road:
         car.certainty_right_timer = 0
         car.certainty_left_timer = 0
         new_lane.add_car(car)
+
+    def has_cars(self) -> bool:
+        for lane in self.lanes:
+            if lane.has_cars(): return True
+
+        return False
             
 
 class System:
@@ -247,8 +263,10 @@ class System:
         self.final_time = final_time
         self.total_length = 0
         self.time = 0
-        self.index = 0
+        self.index = 1
+        self.obstacle_index = -1
         self.num_roads = 0
+        self.obstacle_length = OBSTACLE_LENGTH
 
     def increment_index(self):
         self.index += 1
@@ -265,27 +283,29 @@ class System:
         self.roads.append(road)
         self.num_roads += 1
         road.dt = self.dt
+        self.time_stopper = 0
 
     def update(self, logger = None):
         for road in self.roads:
             road.update(self.dt)
         self.time += self.dt
 
-        if 0 < ((self.time) % 10) < 1e-3:
-            print(f"Current time passed: {self.time}")
+        if self.time > self.time_stopper:
+            print(f"The current time now is: {self.time}")
+            self.time_stopper += 10
+
 
 
         if logger:
             logger.log(self)
 
-    def equal_distance_car_creator(self, num_cars, driver_type = "basic", speed=0, lane_index=0, road_index = None):
+    def equal_distance_car_creator(self, num_cars, driver_type = "basic", speed=0, lane_index=0, road_index = 0):
         split_length = self.total_length / num_cars
         for i in range(num_cars):
             self.add_car(split_length*(i), driver_type, speed, lane_index, road_index)
 
-    def gaussian_spread_car_creator(self, num_cars, driver_type="basic", speed=0, lane_index=0, mean=None, std_dev=None, road_index = None):
+    def gaussian_spread_car_creator(self, num_cars, driver_type="basic", speed=0, lane_index=0, mean=None, std_dev=None, road_index = 0):
 
-        road_index = 0
         road_length = self.roads[road_index].length  # assuming single road for now
         car_length = CAR_LENGTH  # adjust based on your Car class
         min_spacing = car_length + 1  # buffer to avoid overlaps
@@ -300,7 +320,7 @@ class System:
         max_attempts = 10000
 
         while len(positions) < num_cars and attempts < max_attempts:
-            pos = np.random.normal(mean, std_dev) % road_length  # wrap around
+            pos = np.clip(np.random.normal(mean, std_dev), 0, road_length) 
             if all(abs(pos - p) > min_spacing for p in positions):
                 positions.append(pos)
             attempts += 1
@@ -312,6 +332,34 @@ class System:
 
         for pos in positions:
             self.add_car(pos, driver_type, speed, lane_index, road_index)
+
+    
+    def block_lane_from_offsets(self, road_index, lane_index, start_offset, end_offset=None ):
+        if road_index >= len(self.roads):
+            return
+        if lane_index >= len(self.roads[road_index].lanes):
+            return
+        
+        lane = self.roads[road_index].lanes[lane_index]
+
+        if end_offset is None:
+            end_offset = lane.length
+        
+        if start_offset is None:
+            start_offset = 0
+
+        start_offset += self.obstacle_length / 2
+        min_space = 1
+
+        while start_offset < end_offset - self.obstacle_length:
+            obstacle = Obstacle(self.obstacle_index, start_offset, self.obstacle_length)
+            lane.add_obstacle(obstacle)
+            self.obstacle_index -= 1
+            start_offset += self.obstacle_length + min_space
+
+
+        
+        
 
 
 class Obstacle(Car):

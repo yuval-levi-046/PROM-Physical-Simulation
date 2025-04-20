@@ -18,7 +18,12 @@ class TrafficController:
                     self.logger.log_entry(self.system.index, self.system.time)
         
         for road in self.system.roads:
-            for lane in road.lanes:                                        
+
+            if not road.has_cars() and self.system.time > 10:
+                print("All car's have exited at time: ", self.system.time)
+
+
+            for lane in road.lanes:                                                            
                 for car in lane.cars[:]:  # safe iteration'
                     for rule in self.rules:
                         if abs(self.system.time - rule[0]) <= 1e-1: # INTERFERENCE
@@ -55,6 +60,7 @@ class TrafficController:
                         if car.lane.next_lane:
                             lane.next_lane.add_car(car)
                         else:
+                            print("Removing car with index: ", car.id)
                             if hasattr(self, 'logger') and self.logger:
                                 self.logger.log_exit(car, self.system.time)
 
