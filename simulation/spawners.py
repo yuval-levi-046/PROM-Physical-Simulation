@@ -49,6 +49,32 @@ def timed_spawner(interval, road_index, num_cars, lane_index=None, driver_type="
 
     return rule
 
+def density_random_lane_spawner(cars_per_second, road_index, total_cars, driver_type="basic", speed=0):
+    timer = [0]
+    local_num_cars = [0]
+    interval = 1.0 / cars_per_second  # time between car spawns
+
+    def rule(dt, system, index):
+        if local_num_cars[0] >= total_cars:
+            return False
+
+        timer[0] += dt
+        if timer[0] >= interval:
+            road = system.roads[road_index]
+            chosen_lane = random.choice(road.lanes)
+
+            car = Car(index, speed=speed, driver_type=driver_type)
+
+            if safe_add_car(chosen_lane, car, system.time):
+                local_num_cars[0] += 1
+                timer[0] = 0
+                system.increment_index()
+                return True
+
+        return False
+
+    return rule
+
 
 def random_interval_spawner(min_interval, max_interval, road_index, num_cars, lane_index=None, driver_type="basic", speed=0):
     timer = [0]

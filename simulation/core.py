@@ -79,7 +79,7 @@ class Car:
         if self.driver_model.braking_chance > random.uniform(0, 1):
             self.apply_slowness(8*dt)
 
-        self.acceleration = self.driver_model.compute_idm_acceleration(self)
+        self.acceleration = self.driver_model.compute_idm_acceleration(self, is_test=False)
 
         if self.is_slowed:
             if self.timers["slowness_timer"] > 0:
