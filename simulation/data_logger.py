@@ -6,6 +6,7 @@ class DataLogger:
         self.records = []
         self.exits = []
         self.lane_switches = []
+        self.active_cars_log = []
         self.entries = {}
         self.metadata = {
             "tag": tag,
@@ -20,20 +21,23 @@ class DataLogger:
         }
 
     def log(self, system):
+        
+
         for road_id, road in enumerate(system.roads):
             for lane_id, lane in enumerate(road.lanes):
                 for car in lane.cars:
-                    record = {
-                        "time": round(system.time, 4),
-                        "car_id": car.id,
-                        "lane_id": lane.id,
-                        "offset": car.offset,
-                        "velocity": car.velocity_magnitude,
-                        "acceleration": car.acceleration,
-                        "driver_type": car.driver_profile,
-                        "desired_speed": getattr(car.driver_model, "desired_speed", None)
-                    }
-                    self.records.append(record)
+                    if not car.is_obstacle:
+                        record = {
+                            "time": round(system.time, 4),
+                            "car_id": car.id,
+                            "lane_id": lane.id,
+                            "offset": car.offset,
+                            "velocity": car.velocity_magnitude,
+                            "acceleration": car.acceleration,
+                            "driver_type": car.driver_profile,
+                            "desired_speed": getattr(car.driver_model, "desired_speed", None)
+                        }
+                        self.records.append(record)
 
         # Update dynamic metadata
         self.metadata["time_steps"] += 1
