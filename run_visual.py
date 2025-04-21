@@ -19,11 +19,7 @@ system.add_road(road)
 logger = DataLogger(expected_total_cars=10000, tag="basic_one_road_test")
 controller = TrafficController(system, logger=logger)
 
-controller.add_spawn_rule(timed_spawner(0.3, 0, 100, 0, "aggressive", speed=0))
-controller.add_spawn_rule(timed_spawner(0.3, 0, 100, 1, "aggressive", speed=5))
-controller.add_spawn_rule(timed_spawner(0.3, 0, 100, 2, speed=0))
-controller.add_spawn_rule(timed_spawner(0.3, 0, 100, 3, speed=5))
-controller.add_spawn_rule(timed_spawner(0.3, 0, 100, 4, speed=0))
+controller.add_spawn_rule(dens)
 
 system.block_lane_from_offsets(0, 0, 500, 700)
 system.block_lane_from_offsets(0, 1, 550, 650)
