@@ -27,7 +27,7 @@ class DriverModel:
         self.s0 = self.idm_params.get("s0", 2.0)
         self.T = self.idm_params.get("T", 1.5)
 
-        self.safety_constraint = -self.b * 4
+        self.safety_constraint = -self.b * 3
         self.speed_factor = 1.5
 
     def compute_idm_acceleration(self, car, leader=0, is_test = True):
@@ -59,7 +59,7 @@ class DriverModel:
 
         acceleration = self.a * (1 - (v / v0)**self.delta - (s_star / s)**2)
 
-        acceleration = np.clip(acceleration, -self.b*5, self.a*6)
+        acceleration = np.clip(acceleration, -self.b*5, self.a*5)
 
         return acceleration
     
