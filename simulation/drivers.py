@@ -92,10 +92,10 @@ class DriverModel:
             bias += 1
 
         if leader and leader.is_obstacle:
-            bias -= 0.3
+            bias -= 1
 
         if direction == "left" and leader and not leader.is_obstacle:
-            if leader.velocity_magnitude < car.velocity_magnitude and leader.velocity_magnitude > 5:
+            if leader.velocity_magnitude < car.velocity_magnitude and car.velocity_magnitude > 10:
                 car.deccelerate(road.dt)
 
         if direction == "right" and old_follower:

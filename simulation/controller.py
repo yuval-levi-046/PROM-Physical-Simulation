@@ -10,7 +10,7 @@ class TrafficController:
         self.spawn_rules = []
         self.rules = []
 
-    def control(self, dt):
+    def control(self, dt, should_print = False):
         """Runs all registered spawn rules and handles car transfer between roads."""
         for rule in self.spawn_rules:
             if rule(dt, self.system, self.system.index):
@@ -54,14 +54,16 @@ class TrafficController:
                         try:
                             lane.remove_car(car)
                         except:
-                            print("Warning removed car that doesn't exist!", car.id)
+                            if should_print:
+                                print("Warning removed car that doesn't exist!", car.id)
                         
                         car.offset = 0
 
                         if car.lane.next_lane:
                             lane.next_lane.add_car(car)
                         else:
-                            print("Removing car with index: ", car.id)
+                            if should_print:
+                                print("Removing car with index: ", car.id)
                             if hasattr(self, 'logger') and self.logger:
                                 self.logger.log_exit(car, self.system.time)
 

@@ -274,7 +274,7 @@ class System:
     def add_car(self, offset, driver_type, speed, lane_index, road_index):
         car = Car(self.index, offset=offset, speed=speed, driver_type=driver_type)
         self.roads[road_index].lanes[lane_index].add_car(car)
-        print(f"Inserting car with index: {car.id} at time: {self.time}")
+        # print(f"Inserting car with index: {car.id} at time: {self.time}")
 
         self.increment_index()
 
@@ -292,7 +292,7 @@ class System:
 
         if self.time > self.time_stopper:
             print(f"The current time now is: {self.time}")
-            self.time_stopper += 10
+            self.time_stopper += 50
 
 
 

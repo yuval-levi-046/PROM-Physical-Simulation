@@ -20,7 +20,7 @@ def safe_add_car(lane, car, time):
             return False
         
     lane.add_car(car)
-    print(f"Inserting car with index:  {str(car.id)} at time: {time}")
+    # print(f"Inserting car with index:  {str(car.id)} at time: {time}")
     return True
 
 def timed_spawner(interval, road_index, num_cars, lane_index=None, driver_type="basic", speed=0):
