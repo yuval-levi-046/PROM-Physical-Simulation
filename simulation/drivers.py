@@ -16,7 +16,7 @@ class DriverModel:
         self.bias_left = driver_type.get("bias_left", 0.2)
         self.bias_right = driver_type.get("bias_right", -0.2)
 
-        self.braking_chance = driver_type.get("braking_chance", 1e-7)
+        self.braking_chance = driver_type.get("braking_chance", 1e-3)
 
         self.speed_difference = driver_type.get("speed_difference", 0)
         self.desired_speed = np.clip(np.random.normal(self.speed_difference, 5), self.speed_difference-10, self.speed_difference+10)
@@ -27,10 +27,10 @@ class DriverModel:
         self.s0 = self.idm_params.get("s0", 2.0)
         self.T = self.idm_params.get("T", 1.5)
 
-        self.safety_constraint = -self.b * 4
+        self.safety_constraint = -self.b * 3
         self.speed_factor = 1.5
 
-    def compute_idm_acceleration(self, car, leader=0):
+    def compute_idm_acceleration(self, car, leader=0, is_test = True):
         
         v = car.velocity_magnitude
         v0 = car.max_speed*self.speed_factor + self.desired_speed
@@ -50,9 +50,16 @@ class DriverModel:
             delta_v = v - leader.velocity_magnitude
 
         s_star = self.s0 + v * self.T + (v * delta_v) / (2 * (self.a * self.b)**0.5)
+        
+        perception_error = 1
+        if is_test:
+            perception_error = np.clip(np.random.normal(1.0, 0.4), 0.6, 1.4)
+
+        s_star *= perception_error
+
         acceleration = self.a * (1 - (v / v0)**self.delta - (s_star / s)**2)
 
-        acceleration = np.clip(acceleration, -self.b*5, self.a*6)
+        acceleration = np.clip(acceleration, -self.b*5, self.a*5)
 
         return acceleration
     
@@ -112,7 +119,12 @@ class DriverModel:
             a_after = self.compute_idm_acceleration(old_follower, car.next_car)
             impact_old_follower = a_after - a_before
 
-        incentive = (a_new - a_current) - self.p * (impact_new_follower + impact_old_follower) + bias
+        if car.velocity_magnitude < 3:
+            politeness_bias = -self.p * 0.8
+        else:
+            politeness_bias = 0
+
+        incentive = (a_new - a_current) - (self.p + politeness_bias) * (impact_new_follower + impact_old_follower) + bias
 
         min_safe_gap = 1.0  
 

@@ -35,7 +35,7 @@ AGGRESSIVE_DRIVER = {
     "speed_difference": 20,
     "idm_params": {
         "a": 3.5,
-        "b": 1.5,
+        "b": 2.5,
         "delta": 4,
         "s0": 1.0,
         "T": 1.0

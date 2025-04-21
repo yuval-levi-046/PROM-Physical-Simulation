@@ -21,6 +21,7 @@ class TrafficController:
 
             if not road.has_cars() and self.system.time > 10:
                 print("All car's have exited at time: ", self.system.time)
+                return True
 
 
             for lane in road.lanes:                                                            
@@ -63,6 +64,8 @@ class TrafficController:
                             print("Removing car with index: ", car.id)
                             if hasattr(self, 'logger') and self.logger:
                                 self.logger.log_exit(car, self.system.time)
+
+        return False
 
 
     def add_slow_car(self, time, delta_time, car_index):
