@@ -27,7 +27,7 @@ class DriverModel:
         self.s0 = self.idm_params.get("s0", 2.0)
         self.T = self.idm_params.get("T", 1.5)
 
-        self.safety_constraint = -self.b * 3
+        self.safety_constraint = -9.99
         self.speed_factor = 1.5
 
     def compute_idm_acceleration(self, car, leader=0, is_test = True):
@@ -59,7 +59,7 @@ class DriverModel:
 
         acceleration = self.a * (1 - (v / v0)**self.delta - (s_star / s)**2)
 
-        acceleration = np.clip(acceleration, -self.b*5, self.a*5)
+        acceleration = np.clip(acceleration, -10, 10)
 
         return acceleration
     
@@ -94,13 +94,13 @@ class DriverModel:
         if leader and leader.is_obstacle:
             bias -= 1
 
-        if direction == "left" and leader and not leader.is_obstacle:
-            if leader.velocity_magnitude < car.velocity_magnitude and car.velocity_magnitude > 10:
-                car.deccelerate(road.dt)
+        # if direction == "left" and leader and not leader.is_obstacle:
+        #     if leader.velocity_magnitude < car.velocity_magnitude and car.velocity_magnitude > 10:
+        #         car.deccelerate(road.dt)
 
-        if direction == "right" and old_follower:
-            if old_follower.velocity_magnitude > self.desired_speed + car.max_speed:
-                bias += (1 - self.p) * self.bias_right * 2
+        # if direction == "right" and old_follower:
+        #     if old_follower.velocity_magnitude > self.desired_speed + car.max_speed:
+        #         bias += (1 - self.p) * self.bias_right * 2
 
 
         a_current = self.compute_idm_acceleration(car)

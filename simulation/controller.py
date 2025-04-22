@@ -13,9 +13,10 @@ class TrafficController:
     def control(self, dt, should_print = False):
         """Runs all registered spawn rules and handles car transfer between roads."""
         for rule in self.spawn_rules:
-            if rule(dt, self.system, self.system.index):
-                if hasattr(self, 'logger') and self.logger:
-                    self.logger.log_entry(self.system.index, self.system.time)
+            if self.system.time > 10:
+                if rule(dt, self.system, self.system.index):
+                    if hasattr(self, 'logger') and self.logger:
+                        self.logger.log_entry(self.system.index, self.system.time)
         
         for road in self.system.roads:
 

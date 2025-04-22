@@ -1,6 +1,7 @@
 from simulation.core import Car
 import numpy as np
 import random
+from config import DRIVER_TYPES
 
 def safe_add_car(lane, car, time):
     if lane.cars:
@@ -16,7 +17,7 @@ def safe_add_car(lane, car, time):
 
         acc = car.driver_model.compute_idm_acceleration(car, front_car)
 
-        if acc < car.driver_model.safety_constraint:
+        if acc < (car.driver_model.safety_constraint):
             return False
         
     lane.add_car(car)
@@ -49,6 +50,8 @@ def timed_spawner(interval, road_index, num_cars, lane_index=None, driver_type="
 
     return rule
 
+import random
+
 def density_random_lane_spawner(cars_per_second, road_index, total_cars, driver_type="basic", speed=0):
     timer = [0]
     local_num_cars = [0]
@@ -61,15 +64,27 @@ def density_random_lane_spawner(cars_per_second, road_index, total_cars, driver_
         timer[0] += dt
         if timer[0] >= interval:
             road = system.roads[road_index]
-            chosen_lane = random.choice(road.lanes)
+            lanes = road.lanes[:]
+            random.shuffle(lanes)  # try lanes in random order
 
-            car = Car(index, speed=speed, driver_type=driver_type)
+            for lane in lanes:
+                if driver_type == "mix":
+                    driver = random.choice(DRIVER_TYPES)
+                else:
+                    driver = driver_type
+                
+                car = Car(index, speed=speed, driver_type=driver)
 
-            if safe_add_car(chosen_lane, car, system.time):
-                local_num_cars[0] += 1
-                timer[0] = 0
-                system.increment_index()
-                return True
+                if safe_add_car(lane, car, system.time):
+                    local_num_cars[0] += 1
+                    timer[0] = 0
+                    system.increment_index()
+                    return True
+
+            # No lane accepted the car, skip this interval
+            timer[0] = 0
+            # print("Car was not added to any lane")
+            return False
 
         return False
 

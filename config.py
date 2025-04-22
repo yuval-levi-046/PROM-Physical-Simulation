@@ -20,3 +20,5 @@ ROAD_COLOR = (128, 128, 128)
 CAR_COLOR = (255, 0, 0)
 OBSTACLE_COLOR = (0, 0, 255)
 BACKGROUND_COLOR = (255, 255, 255)
+
+DRIVER_TYPES = ("basic", "random", "cautious", "aggressive")

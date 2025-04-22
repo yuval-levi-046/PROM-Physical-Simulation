@@ -1,8 +1,9 @@
 # simulation/core.py
 import numpy as np
-from config import OBSTACLE_LENGTH, CAR_LENGTH, LANE_WIDTH
+from config import OBSTACLE_LENGTH, CAR_LENGTH, LANE_WIDTH, DRIVER_TYPES
 from simulation.drivers import DriverModel, RandomDriverModel
 import random
+
 
     
 class Car:
@@ -77,7 +78,7 @@ class Car:
             return
 
         if self.driver_model.braking_chance > random.uniform(0, 1):
-            self.apply_slowness(8*dt)
+            self.apply_slowness(10*dt)
 
         self.acceleration = self.driver_model.compute_idm_acceleration(self, is_test=False)
 
@@ -130,6 +131,7 @@ class Lane:
         self.cars.append(obstacle)
         self.num_obstacles += 1
         obstacle.lane = self
+        self.update_next_cars()
 
     def add_car(self, car):
         self.cars.append(car)
@@ -229,6 +231,8 @@ class Road:
         self.next_road = next_road
         for i in range(len(self.lanes)):
             self.lanes[i].next_lane = self.next_road.lanes[i]
+            self.lanes[i].update_next_cars()
+
     
     def update(self, dt):
         for lane in self.lanes:
@@ -274,13 +278,13 @@ class System:
     def add_car(self, offset, driver_type, speed, lane_index, road_index):
         car = Car(self.index, offset=offset, speed=speed, driver_type=driver_type)
         self.roads[road_index].lanes[lane_index].add_car(car)
-        # print(f"Inserting car with index: {car.id} at time: {self.time}")
 
         self.increment_index()
 
 
     def add_road(self, road):
         self.roads.append(road)
+        self.total_length += road.length
         self.num_roads += 1
         road.dt = self.dt
         self.time_stopper = 0
@@ -294,15 +298,22 @@ class System:
             print(f"The current time now is: {self.time}")
             self.time_stopper += 50
 
-
-
         if logger:
             logger.log(self)
 
-    def equal_distance_car_creator(self, num_cars, driver_type = "basic", speed=0, lane_index=0, road_index = 0):
-        split_length = self.total_length / num_cars
+    def equal_distance_car_creator(self, num_cars, driver_type = "basic", speed=0, lane_index=0, road_index = 0, length = None, offset = 0):
+        if num_cars <= 0:
+            return
+        if not length: length = self.total_length
+
+        split_length = length / num_cars
+
         for i in range(num_cars):
-            self.add_car(split_length*(i), driver_type, speed, lane_index, road_index)
+            if driver_type == "mix":
+                driver = random.choice(DRIVER_TYPES)
+            else:
+                driver = driver_type
+            self.add_car(offset + split_length*(i), driver, speed, lane_index, road_index)
 
     def gaussian_spread_car_creator(self, num_cars, driver_type="basic", speed=0, lane_index=0, mean=None, std_dev=None, road_index = 0):
 
