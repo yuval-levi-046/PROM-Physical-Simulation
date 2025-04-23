@@ -24,9 +24,9 @@ CAUTIOUS_DRIVER = {
         "T": 2.0
     },
     "politeness": 0.5,
-    "lane_change_threshold": 0.7,
-    "bias_left": -0.2,
-    "bias_right": 0.2,
+    "lane_change_threshold": 0.5,
+    "bias_left": -0.3,
+    "bias_right": 0.3,
     "braking_chance": 1e-3
 }
 
@@ -41,7 +41,7 @@ AGGRESSIVE_DRIVER = {
         "T": 1.0
     },
     "politeness": 0.1,
-    "lane_change_threshold": 0.4,
+    "lane_change_threshold": 0.5,
     "bias_left": -0.3,
     "bias_right": 0.3,
     "braking_chance": 1e-3

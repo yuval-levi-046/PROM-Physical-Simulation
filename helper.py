@@ -240,25 +240,70 @@ def plot_density_by_space(df, road_length):
     plt.tight_layout()
     plt.show()
 
+def calculate_wave_speed_and_plot(df, road_length, bin_size=6.5):
+    # Step 1: Create the density matrix
+    num_time_bins = int(road_length / bin_size)
+    num_space_bins = int(road_length / bin_size)
 
+    time_bins = np.linspace(df['time'].min(), df['time'].max(), num_time_bins)
+    space_bins = np.linspace(0, road_length, num_space_bins)
 
-def calculate_wave_speed_by_peak_tracking(density, dt, dx):
+    density, xedges, yedges = np.histogram2d(df['offset'], df['time'], bins=[space_bins, time_bins])
+    density = density.T  # Shape = (time bins, space bins)
 
+    dt = (time_bins[1] - time_bins[0])  # time step in simulation units (seconds)
+    dx = (space_bins[1] - space_bins[0])  # space step in simulation units (meters)
+
+    extent = [space_bins[0], space_bins[-1], time_bins[0], time_bins[-1]] 
+
+    vmin = np.percentile(density, 5)   # Lower 5% cutoff
+    vmax = np.percentile(density, 95)
+
+    # Step 2: Find max density points (peaks)
     tracked_peaks = []
-
     for t, row in enumerate(density):
-        peaks, _ = find_peaks(row, height=np.percentile(row, 80))  # Adjust threshold as needed
-        for p in peaks:
-            tracked_peaks.append((t * dt, p * dx))  # time in seconds, position in meters
+        
+        peak_positions = np.where(row >= np.percentile(density, 90))[0]
+        for p in peak_positions:
+            tracked_peaks.append((p * dx, t * dt))  # Convert to meters and seconds
 
-    # Convert to arrays for fitting
-    times = np.array([tp[0] for tp in tracked_peaks])
-    positions = np.array([tp[1] for tp in tracked_peaks])
+    if len(tracked_peaks) < 2:
+        raise ValueError("Not enough peaks detected to compute wave speed.")
 
-    # Linear regression (positions vs. time)
-    slope, intercept, r_value, p_value, std_err = linregress(times, positions)
-    print(f"Estimated wave speed: {slope:.2f} m/s")
+    positions = np.array([tp[0] for tp in tracked_peaks], dtype=float)  # meters
+    times = np.array([tp[1] for tp in tracked_peaks], dtype=float)      # seconds
 
-    return slope
+    # Step 3: Linear regression in physical units
+    slope, intercept, r_value, p_value, std_err = linregress(positions, times)
+    wave_speed = 1 / slope  # invert slope because slope = dt/dx → want dx/dt
 
+    print(f"Estimated wave speed: {wave_speed:.2f} m/s (negative = upstream)")
 
+    # Step 4: Plot density + overlay
+    plt.figure(figsize=(10, 6))
+    plt.imshow(
+        density, 
+        aspect='auto', 
+        origin='lower',
+        cmap='plasma',
+        extent=extent,
+        vmin = vmin,   # Lower 5% cutoff
+        vmax = vmax
+    )
+    plt.colorbar(label='Car Density')
+    plt.scatter(positions, times, color='cyan', s=10, label='Max Density Points')
+    plt.plot(
+        positions,
+        slope * positions + intercept,
+        color='white',
+        linestyle='--',
+        label=f'Fitted Line (Speed: {wave_speed:.2f} m/s)'
+    )
+    plt.xlabel('Position on Road (m)')
+    plt.ylabel('Time (s)')
+    plt.title('Car Density with Max Density Points and Fitted Wave Speed')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    return wave_speed
