@@ -1,8 +1,9 @@
 # simulation/data_logger.py
 import pandas as pd
+import numpy as np
 
 class DataLogger:
-    def __init__(self, expected_total_cars=None, tag=None):
+    def __init__(self, bin_size = 6.5, road_length = 800, expected_total_cars=None, tag=None):
         self.records = []
         self.exits = []
         self.lane_switches = []
@@ -13,12 +14,19 @@ class DataLogger:
             "num_roads": 0,
             "total_lanes": 0,
             "total_cars": 0,
-            "lane_width": None,
+            "road_length": road_length,
             "dt": None,
             "total_sim_time": None,
             "time_steps": 0,
             "expected_total_cars": expected_total_cars,
         }
+
+        self.density_log = []
+        self.flow_log = []
+        self.previous_offsets = {}  # Track previous car positions
+        self.segment_size = 6.5
+        self.road_length = road_length
+        self.segments = np.arange(0, road_length + self.segment_size, self.segment_size)
 
     def log(self, system):
         
@@ -41,6 +49,64 @@ class DataLogger:
 
         # Update dynamic metadata
         self.metadata["time_steps"] += 1
+
+    def log_density_and_flow(self, system):
+        time_now = round(system.time, 4)
+        dt = system.dt  # Use your system's dt if stored in metadata
+
+        segment_counts = [0] * (len(self.segments) - 1)  # For density
+        flow_per_segment = [0] * (len(self.segments) - 1)  # For flow
+
+        # One pass through sorted cars
+        for road in system.roads:
+            for lane in road.lanes:
+                segment_index = 0
+                for car in lane.cars:
+                    if car.is_obstacle:
+                        continue
+
+                    current_offset = car.offset
+                    prev_offset = self.previous_offsets.get(car.id, None)
+
+                    # === DENSITY COUNT ===
+                    while segment_index < len(self.segments) - 1 and current_offset >= self.segments[segment_index + 1]:
+                        segment_index += 1
+                    if segment_index < len(self.segments) - 1:
+                        segment_counts[segment_index] += 1
+
+                    # === FLOW CHECK ===
+                    if prev_offset is not None:
+                        for i in range(len(self.segments) - 1):
+                            boundary = self.segments[i + 1]
+                            if prev_offset < boundary <= current_offset:
+                                flow_per_segment[i] += 1  # Crossing detected
+
+                    # Update previous offset for next step
+                    self.previous_offsets[car.id] = current_offset
+
+        # Log both density and flow
+        for i in range(len(segment_counts)):
+            segment_start = self.segments[i]
+            segment_end = self.segments[i + 1]
+            segment_length = segment_end - segment_start
+
+            density = segment_counts[i] / segment_length if segment_length > 0 else 0
+            flow = flow_per_segment[i] / dt  # Flow in vehicles per second
+
+            self.density_log.append({
+                "time": time_now,
+                "segment_start": segment_start,
+                "segment_end": segment_end,
+                "density": density
+            })
+
+            self.flow_log.append({
+                "time": time_now,
+                "segment_start": segment_start,
+                "segment_end": segment_end,
+                "flow": flow
+            })
+
 
     def log_entry(self, index, system_time):
         self.entries[index] = round(system_time, 4)
@@ -89,3 +155,9 @@ class DataLogger:
         print("Simulation Metadata:")
         for key, value in self.metadata.items():
             print(f" - {key}: {value}")
+
+    def to_density_dataframe(self):
+        return pd.DataFrame(self.density_log)
+
+    def to_flow_dataframe(self):
+        return pd.DataFrame(self.flow_log)

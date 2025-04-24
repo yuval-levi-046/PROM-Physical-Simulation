@@ -27,6 +27,8 @@ class DriverModel:
         self.s0 = self.idm_params.get("s0", 2.0)
         self.T = self.idm_params.get("T", 1.5)
 
+        self.is_random = False
+
         self.safety_constraint = -9.99
 
     def compute_idm_acceleration(self, car, leader=0, is_test = True):
@@ -50,13 +52,9 @@ class DriverModel:
 
         s_star = self.s0 + v * self.T + (v * delta_v) / (2 * (self.a * self.b)**0.5)
         
-        perception_error = 1
-        if is_test:
-            perception_error = np.clip(np.random.normal(1.0, 0.4), 0.6, 1.4)
+        idm_noise = np.clip(np.random.normal(0, 0.5), -0.5, 0.5)
 
-        s_star *= perception_error
-
-        acceleration = self.a * (1 - (v / v0)**self.delta - (s_star / s)**2)
+        acceleration = self.a * (1 - (v / v0)**self.delta - (s_star / s)**2) + idm_noise
 
         acceleration = np.clip(acceleration, -10, 10)
 
@@ -118,14 +116,14 @@ class DriverModel:
             a_after = self.compute_idm_acceleration(old_follower, car.next_car)
             impact_old_follower = a_after - a_before
 
-        if car.velocity_magnitude < 3:
-            politeness_bias = -self.p * 0.8
-        else:
-            politeness_bias = 0
+        # if car.velocity_magnitude < 3:
+        #     politeness_bias = -self.p * 0.8
+        # else:
+        #     politeness_bias = 0
 
-        incentive = (a_new - a_current) - (self.p + politeness_bias) * (impact_new_follower + impact_old_follower) + bias
+        incentive = (a_new - a_current) - (self.p) * (impact_new_follower + impact_old_follower) + bias
 
-        min_safe_gap = 1.0  
+        min_safe_gap = 1.0      
 
         if follower:
             a_follower_after = self.compute_idm_acceleration(follower, car)
@@ -147,7 +145,8 @@ class DriverModel:
 
 class RandomDriverModel(DriverModel):
 
-    def __init__(self, v_mean=0, v_std=20, t_mean=1.5, t_std=1):
+    def __init__(self, v_mean=0, v_std=15, t_mean=1.5, t_std=1, s0_mean=2, s_std=1):
         super().__init__("basic")
-        self.desired_speed = float(np.clip(np.random.normal(v_mean, v_std), -v_std, v_std))
-        self.idm_params["T"] = float(np.clip(np.random.normal(t_mean, t_std), 0.5, 3))
+
+        self.is_random = True
+        self.desired_speed = 0

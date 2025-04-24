@@ -2,8 +2,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from scipy.signal import find_peaks
-from scipy.stats import linregress
 
 def get_average_velocity(df, start_percent = 0.0, end_percent = 1.0):
     if df.empty or not 0 <= start_percent < end_percent <= 1:
@@ -240,70 +238,43 @@ def plot_density_by_space(df, road_length):
     plt.tight_layout()
     plt.show()
 
-def calculate_wave_speed_and_plot(df, road_length, bin_size=6.5):
-    # Step 1: Create the density matrix
-    num_time_bins = int(road_length / bin_size)
-    num_space_bins = int(road_length / bin_size)
+def calculate_shockwave_speed_circular_road(df_density, df_flow):
+   
+    # Merge flow and density into one table:
+    df_density = df_density.copy()
+    df_flow = df_flow.copy()
 
-    time_bins = np.linspace(df['time'].min(), df['time'].max(), num_time_bins)
-    space_bins = np.linspace(0, road_length, num_space_bins)
+    merged = pd.merge(df_density, df_flow, on=['time', 'segment_start', 'segment_end'], suffixes=('_density', '_flow'))
 
-    density, xedges, yedges = np.histogram2d(df['offset'], df['time'], bins=[space_bins, time_bins])
-    density = density.T  # Shape = (time bins, space bins)
+    # Group by time to work frame-by-frame:
+    speeds = []
 
-    dt = (time_bins[1] - time_bins[0])  # time step in simulation units (seconds)
-    dx = (space_bins[1] - space_bins[0])  # space step in simulation units (meters)
+    for time, group in merged.groupby('time'):
+        group = group.sort_values('segment_start').reset_index(drop=True)
 
-    extent = [space_bins[0], space_bins[-1], time_bins[0], time_bins[-1]] 
+        # Wrap-around for circular road:
+        densities = group['density'].to_numpy()
+        flows = group['flow'].to_numpy()
 
-    vmin = np.percentile(density, 5)   # Lower 5% cutoff
-    vmax = np.percentile(density, 95)
+        densities_shifted = np.roll(densities, -1)
+        flows_shifted = np.roll(flows, -1)
 
-    # Step 2: Find max density points (peaks)
-    tracked_peaks = []
-    for t, row in enumerate(density):
-        
-        peak_positions = np.where(row >= np.percentile(density, 90))[0]
-        for p in peak_positions:
-            tracked_peaks.append((p * dx, t * dt))  # Convert to meters and seconds
+        delta_rho = densities_shifted - densities
+        delta_q = flows_shifted - flows
 
-    if len(tracked_peaks) < 2:
-        raise ValueError("Not enough peaks detected to compute wave speed.")
+        # Avoid divide-by-zero:
+        valid = delta_rho != 0
+        shock_speeds = delta_q[valid] / delta_rho[valid]
 
-    positions = np.array([tp[0] for tp in tracked_peaks], dtype=float)  # meters
-    times = np.array([tp[1] for tp in tracked_peaks], dtype=float)      # seconds
+        if len(shock_speeds) > 0:
+            avg_speed = np.mean(shock_speeds)
+            speeds.append({'time': time, 'shockwave_speed': avg_speed})
 
-    # Step 3: Linear regression in physical units
-    slope, intercept, r_value, p_value, std_err = linregress(positions, times)
-    wave_speed = 1 / slope  # invert slope because slope = dt/dx → want dx/dt
+    df_speeds = pd.DataFrame(speeds)
+    avg_overall_speed = df_speeds['shockwave_speed'].mean()
 
-    print(f"Estimated wave speed: {wave_speed:.2f} m/s (negative = upstream)")
+    print(f"Average Shockwave Speed (circular road): {avg_overall_speed:.2f} m/s")
 
-    # Step 4: Plot density + overlay
-    plt.figure(figsize=(10, 6))
-    plt.imshow(
-        density, 
-        aspect='auto', 
-        origin='lower',
-        cmap='plasma',
-        extent=extent,
-        vmin = vmin,   # Lower 5% cutoff
-        vmax = vmax
-    )
-    plt.colorbar(label='Car Density')
-    plt.scatter(positions, times, color='cyan', s=10, label='Max Density Points')
-    plt.plot(
-        positions,
-        slope * positions + intercept,
-        color='white',
-        linestyle='--',
-        label=f'Fitted Line (Speed: {wave_speed:.2f} m/s)'
-    )
-    plt.xlabel('Position on Road (m)')
-    plt.ylabel('Time (s)')
-    plt.title('Car Density with Max Density Points and Fitted Wave Speed')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    return avg_overall_speed
 
-    return wave_speed
+

@@ -8,7 +8,7 @@ BASIC_DRIVER = {
         "s0": 2.0,
         "T": 1.5
     },
-    "politeness": 0.3,
+    "politeness": 0.5,
     "lane_change_threshold": 0.5,
     "bias_left": -0.3,
     "bias_right": 0.3,

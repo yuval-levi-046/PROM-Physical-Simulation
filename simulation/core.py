@@ -287,7 +287,7 @@ class System:
         self.total_length += road.length
         self.num_roads += 1
         road.dt = self.dt
-        self.time_stopper = 0
+        self.time_stopper = 50
 
     def update(self, logger = None):
         for road in self.roads:
@@ -300,6 +300,8 @@ class System:
 
         if logger:
             logger.log(self)
+            logger.log_density_and_flow(self)
+        
 
     def equal_distance_car_creator(self, num_cars, driver_type = "basic", speed=0, lane_index=0, road_index = 0, length = None, offset = 0):
         if num_cars <= 0:
