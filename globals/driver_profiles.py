@@ -12,7 +12,8 @@ BASIC_DRIVER = {
     "lane_change_threshold": 0.5,
     "bias_left": -0.3,
     "bias_right": 0.3,
-    "braking_chance": 1e-3
+    "braking_chance": 1e-3,
+    "sigma": 0.5
 }
 CAUTIOUS_DRIVER = {
     "desired_speed": -10,

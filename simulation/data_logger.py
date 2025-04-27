@@ -107,6 +107,48 @@ class DataLogger:
                 "flow": flow
             })
 
+    def enable_sensor_logger(self, sensor_location=500, aggregation_window=30):
+        self.sensor_location = sensor_location
+        self.aggregation_window = aggregation_window
+        self.sensor_time_bin = 0.0
+        self.sensor_speed_samples = []
+        self.sensor_speed_log = []
+        self.sensor_previous_offsets = {}
+
+    def log_sensor_speed(self, system):
+        self.sensor_time_bin += system.dt
+
+        for road in system.roads:
+            for lane in road.lanes:
+                for car in lane.cars:
+                    if car.is_obstacle:
+                        continue
+
+                    prev = self.sensor_previous_offsets.get(car.id, car.offset)
+                    curr = car.offset
+
+                    # Sensor crossing condition: crossed the sensor in this step
+                    if prev < self.sensor_location <= curr:
+                        self.sensor_speed_samples.append(car.velocity_magnitude)
+
+                    self.sensor_previous_offsets[car.id] = curr
+
+        if self.sensor_time_bin >= self.aggregation_window:
+            avg_speed = np.mean(self.sensor_speed_samples) if self.sensor_speed_samples else 0.0
+            count = len(self.sensor_speed_samples)
+
+            self.sensor_speed_log.append({
+                "time": round(system.time, 2),
+                "average_speed": avg_speed,
+                "count": count
+            })
+
+            self.sensor_time_bin = 0.0
+            self.sensor_speed_samples = []
+
+    def to_sensor_dataframe(self):
+        import pandas as pd
+        return pd.DataFrame(self.sensor_speed_log)
 
     def log_entry(self, index, system_time):
         self.entries[index] = round(system_time, 4)

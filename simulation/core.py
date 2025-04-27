@@ -31,7 +31,7 @@ class Car:
 
         self.driver_profile = driver_type
         
-        if driver_type == "random":
+        if driver_type == "calibration" or driver_type == "random":
             self.driver_model = RandomDriverModel()
         else:
             self.driver_model = DriverModel(driver_type)
@@ -77,8 +77,8 @@ class Car:
         if self.is_obstacle:
             return
 
-        if self.driver_model.braking_chance > random.uniform(0, 1):
-            self.apply_slowness(10*dt)
+        # if self.driver_model.braking_chance > random.uniform(0, 1):
+        #     self.apply_slowness(10*dt)
 
         self.acceleration = self.driver_model.compute_idm_acceleration(self, is_test=False)
 
@@ -300,7 +300,7 @@ class System:
 
         if logger:
             logger.log(self)
-            logger.log_density_and_flow(self)
+            # logger.log_density_and_flow(self)
         
 
     def equal_distance_car_creator(self, num_cars, driver_type = "basic", speed=0, lane_index=0, road_index = 0, length = None, offset = 0):

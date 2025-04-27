@@ -27,6 +27,8 @@ class DriverModel:
         self.s0 = self.idm_params.get("s0", 2.0)
         self.T = self.idm_params.get("T", 1.5)
 
+        self.sigma = driver_type.get("sigma", 0.5)
+
         self.is_random = False
 
         self.safety_constraint = -9.99
@@ -52,7 +54,7 @@ class DriverModel:
 
         s_star = self.s0 + v * self.T + (v * delta_v) / (2 * (self.a * self.b)**0.5)
         
-        idm_noise = np.clip(np.random.normal(0, 0.5), -0.5, 0.5)
+        idm_noise = np.random.normal(0, self.sigma) * np.sqrt(0.1)
 
         acceleration = self.a * (1 - (v / v0)**self.delta - (s_star / s)**2) + idm_noise
 

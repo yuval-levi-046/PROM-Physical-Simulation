@@ -12,7 +12,7 @@ sim_time = 4000
 road_length = 800
 max_speed = 100
 
-num_lanes = 2
+num_lanes = 1
 
 density = 0.08
 
@@ -30,10 +30,12 @@ road = Road(num_lanes, max_speed, start_pos, end_pos)
 
 system.add_road(road)
 logger = DataLogger(tag="mix_driver_density")
-controller = TrafficController(system, logger=logger)
+controller = TrafficController(system)
 
-system.equal_distance_car_creator(int(road_length*density), road_index = 0, lane_index = 0, driver_type="mix", speed = 0)
-system.equal_distance_car_creator(int(road_length*density), road_index = 0, lane_index = 1, driver_type="mix", speed = 0)
+logger.enable_sensor_logger(sensor_location=500, aggregation_window=30)
+controller.add_exit_gate(1600)
+
+controller.add_spawn_rule(density_random_lane_spawner(2500, 0, 200, "calibration", 0))
 
 road.set_next_road(road)
 
